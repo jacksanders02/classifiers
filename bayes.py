@@ -47,13 +47,12 @@ def bayesian_classify(train, test):
 
     params = [estimate_params(xs[:, :-1]) for xs in train]
 
-    # Construct gaussian distributions using estimated parameters
-    normals = [multivariate_normal(mean=p[0], cov=p[1]) for p in params]
-
     tst = test[:, :-1] if len(test.shape) > 1 else test[:-1]
+    # Construct gaussian distributions using estimated parameters
+    pdfs = np.array([multivariate_normal(mean=p[0], cov=p[1]).pdf(tst) for p in params])
 
     # Bayes classification rule - posterior probability {P(w|x)} = likelihood {P(x|w)} * prior
-    posteriors = np.array([dist.pdf(tst) for dist in normals]).T * priors
+    posteriors = pdfs.T * priors
 
     correct = test[:, -1] if len(test.shape) > 1 else test[-1]
 
@@ -96,7 +95,7 @@ elif METHOD == "loo":
             train_data[j] = left_out[left_out[:, -1] == labels[j]]
         n += bayesian_classify(train_data, test_data)
 
-    percent_right = n / X.shape[0] * 100
+    percent_right = n / len(X) * 100
 
 # Split one file in half, one half is training data, and the other is testing
 else:
