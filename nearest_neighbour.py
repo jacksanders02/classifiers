@@ -29,8 +29,9 @@ SEPARATED = args.separated
 # Load dataset
 if SEPARATED:
     X = data_helpers.loadfile(DATASET, "_train")
+    test_data = data_helpers.loadfile(DATASET, "_test")
 else:
-    X = data_helpers.loadfile(DATASET)
+    X, test_data = data_helpers.split_data(data_helpers.loadfile(DATASET))
 
 
 # Takes a point and an array. Returns the array with the manhattan distance per row appended to the end of each row
@@ -52,6 +53,7 @@ def nearest_neighbours(test, dataset, n):
 def hart(dataset):
     u = np.array([dataset[0]])
     m = 1
+    j = 0
     while m > 0:
         i = 0
         while i < dataset.shape[0]:
@@ -62,23 +64,31 @@ def hart(dataset):
 
             # Cast to int for use in bincount
             nearest_classes = (nn[:, -1] if nn.ndim > 1 else np.array([nn[-1]])).astype(int)
-            if np.argmax(np.bincount(nearest_classes)) + 1 != x[-1]:
+            if u[np.argmax(np.bincount(nearest_classes))][-1] != x[-1]:
                 u = np.vstack((u, x))
                 dataset = np.delete(dataset, i, axis=0)
                 i -= 1  # Account for the removal of an element
                 m += 1
             i += 1
+        j += 1
     return u
 
 
 # Find class labels and set up training and testing arrays
 labels = np.unique(X[:, -1])
 
-train_data = hart(X)
-print(X.shape)
-print(train_data.shape)
+if CONDENSED:
+    X = hart(X)
 
-percent_right = 0
+num = 0
+for t in test_data:
+    nn = nearest_neighbours(t, X, NEIGHBOURS)
+    # Cast to int for use in bincount
+    nearest_classes = (nn[:, -1] if nn.ndim > 1 else np.array([nn[-1]])).astype(int)
+    if X[np.argmax(np.bincount(nearest_classes))][-1] == t[-1]:
+        num += 1
+
+percent_right = num / len(test_data) * 100
 
 print(f'\nClassified {round(percent_right, 2)}% of the testing data correctly with {NEIGHBOURS} nearest neighbours.'
       f' (To 2 D.P.)')
