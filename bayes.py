@@ -1,6 +1,8 @@
 from argparse import ArgumentParser
+from pathlib import Path
 from scipy.stats import multivariate_normal
 import numpy as np
+import time
 
 parser = ArgumentParser()
 parser.add_argument("file", type=str, help="the name of your dataset")
@@ -13,10 +15,16 @@ args = parser.parse_args()
 DATASET = args.file
 METHOD = args.method
 
-if METHOD == "traintest":
-    X = np.loadtxt(open(f'data/{DATASET}_train.txt', 'r'), delimiter=",")
-else:
-    X = np.loadtxt(open(f'data/{DATASET}.txt', 'r'), delimiter=",")
+
+# Load a data file (if file is .npy, load, else load and then convert to .npy)
+def loadfile(file: str, extension: str = ""):
+    if Path(f'data/{file}{extension}.npy').is_file():
+        return np.load(f'data/{file}{extension}.npy')
+    else:
+        x = np.loadtxt(open(f'data/{file}{extension}.txt'), delimiter=",")
+        np.save(f'data/{file}{extension}.npy', x)
+        print(f'Converted dataset {file}{extension}.txt to npy file for faster loading next time this dataset is used.')
+        return x
 
 
 def estimate_params(xs: np.array, n_factor: float = 0.1):
@@ -33,6 +41,15 @@ def split_data(xs: np.array, leave_out: int = False):
         return xs[0::2], xs[1::2]
 
 
+# Load dataset
+start = time.time()
+if METHOD == "traintest":
+    X = loadfile(DATASET, "_train")
+else:
+    X = loadfile(DATASET)
+print(f'\nLoaded data in {round(time.time() - start, 2)} seconds')
+
+
 # Find class labels and set up training and testing arrays
 labels = np.unique(X[:, -1])
 
@@ -42,7 +59,9 @@ if METHOD == "traintest":
     for i in range(len(labels)):
         train_data[i] = X[X[:, -1] == labels[i]]
 
-    test_data = np.loadtxt(open(f'data/{DATASET}_test.txt', 'r'), delimiter=",")
+    start = time.time()
+    test_data = loadfile(DATASET, "_test")
+    print(f'\nLoaded testing data in {round(time.time() - start, 2)} seconds')
 
 else:
     test_data = np.array([None for _ in labels])
