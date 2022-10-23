@@ -14,11 +14,6 @@ def manhattan(p1, ps):
     return np.column_stack((ps, np.sum(abs(p1 - ps), axis=1)))
 
 
-# Takes two points. Returns the second array with the manhattan distance appended to the end
-def manhattan_1d(p1, p2):
-    return np.append(p2, np.sum(abs(p1 - p2)))
-
-
 def nearest_neighbours(test, dataset, n):
     distance_array = manhattan(test, dataset)
 
@@ -27,36 +22,6 @@ def nearest_neighbours(test, dataset, n):
         return np.arange(0, dataset.shape[0])
     else:
         return dataset[np.argpartition(distance_array[:, -1], n)[:n]]
-
-
-def nn_kd_tree(test: np.array, current_node: kd_tree.KDNode, depth=0):
-    col = depth % len(test)
-    current_bests = np.array([[float('inf') for _ in range(len(test) + 1)] for _ in range(NEIGHBOURS)])
-    dist = np.append(manhattan_1d(test[:-1], current_node.node[:-1]), current_node.node[-1])
-
-    # Traverse tree normally (left/right depending on larger/smaller)
-    if test[col] < current_node.node[col]:
-        if current_node.left is None:
-            if current_bests[-1][-2] > dist[-2]:
-                current_bests[-1] = dist
-                return current_bests[current_bests[:, -2].argsort()]
-            return current_bests
-        # No return to allow undoing of recursion
-        current_bests = nn_kd_tree(test, current_node.left, depth+1)
-    else:
-        if current_node.right is None:
-            if current_bests[-1][-2] > dist[-2]:
-                current_bests[-1] = dist
-                return current_bests[current_bests[:, -2].argsort()]
-            return current_bests
-        current_bests = nn_kd_tree(test, current_node.right, depth + 1)
-
-    # Check if current node can fit on the nearest neighbours list
-    if current_bests[-1][-2] > dist[-2]:
-        current_bests[-1] = dist
-        current_bests = current_bests[current_bests[:, -2].argsort()]
-
-    return current_bests
 
 
 def build_kd(dataset):
@@ -138,12 +103,28 @@ if __name__ == "__main__":
 
     num = 0
     start = time.time()
+    i = 1
     for t in test_data:
-        nn = nn_kd_tree(t, KD) if USE_KD else nearest_neighbours(t, X, NEIGHBOURS)
+        starting_bests = np.array([(float('inf'), float('inf')) for _ in range(NEIGHBOURS)])
+        nn = kd_tree.nn_kd_tree(t, KD, starting_bests) if USE_KD else nearest_neighbours(t, X, NEIGHBOURS)
         # Cast to int for use in bincount
         nearest_classes = (nn[:, -1] if nn.ndim > 1 else np.array([nn[-1]])).astype(int)
-        if nearest_classes[np.argmax(np.bincount(nearest_classes))] == t[-1]:
-            num += 1
+
+        if WEIGHTED:
+            weighted_classes = np.bincount(nearest_classes).astype(float)
+            for i in range(len(weighted_classes)):
+                weighted_classes[i] = np.sum(1/nn[:, 0][nn[:, -1] == i], axis=0)
+
+            if np.argmax(weighted_classes) == t[-1]:
+                num += 1
+        else:
+            if np.argmax(np.bincount(nearest_classes)) == t[-1]:
+                num += 1
+
+        if i % 100 == 0:
+            print(i)
+
+        i += 1
 
     percent_right = num / len(test_data) * 100
 
