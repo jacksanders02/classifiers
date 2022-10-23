@@ -2,13 +2,13 @@ import numpy as np
 
 
 class KDNode(object):
-    def __init__(self, loc, left, right):
-        self.loc = loc
+    def __init__(self, node, left, right):
+        self.node = node
         self.left = left
         self.right = right
 
     def __str__(self):
-        return f'{self.left} | {self.loc} | {self.right}'
+        return f'{self.left} | {self.node} | {self.right}'
 
 
 def build_tree(data: np.array, depth: int = 0):
