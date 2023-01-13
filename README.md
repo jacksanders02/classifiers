@@ -9,3 +9,4 @@ The classifiers assume that the class labels are at the end of each line, so ens
 
 ## Current Classifiers
 - Bayesian Classifier (bayes.py)
+- Perceptron Classifier (PLA.py)
