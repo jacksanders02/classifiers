@@ -3,6 +3,17 @@ import sklearn.datasets as dts
 import matplotlib.pyplot as plt
 
 
+# Source: https://stackoverflow.com/a/66351218
+def linePoints(a=0,b=0,c=0,ref = [-1.,1.]):
+    """given a,b,c for straight line as ax+by+c=0,
+    return a pair of points based on ref values
+    e.g linePoints(-1,1,2) == [(-1.0, -3.0), (1.0, -1.0)]
+    """
+    if (a==0 and b==0):
+        raise Exception("linePoints: a and b cannot both be zero")
+    return [(-c/a,p) if b==0 else (p,(-c-a*p)/b) for p in ref]
+
+
 def get_misclassified(points, w, target_class):
     """
     Finds out which points would be misclassified if w was used as a decision b
@@ -41,49 +52,52 @@ def run_iteration(X, w, learning_rate):
 
 
 # Generate a linearly separable dataset with two classes
-separable = False
-min_x = -2
-max_x = 2
+# Source: https://stackoverflow.com/a/47964170
+def linearly_separable_set():
+    separable = False
+    red = []
+    blue = []
+    while not separable:
+        samples = dts.make_classification(n_samples=500, n_features=2,
+                                          n_redundant=0, n_informative=1,
+                                          n_clusters_per_class=1, flip_y=-1)
+        red = samples[0][samples[1] == 0]
+        blue = samples[0][samples[1] == 1]
+        separable = any([red[:, k].max() < blue[:, k].min() or red[:,
+                                                               k].min() > blue[
+                                                                          :,
+                                                                          k].max()
+                         for k in range(2)])
+    return np.array([red, blue])
 
-min_y = -5
-max_y = 5
-while not separable:
-    samples = dts.make_classification(n_samples=100, n_features=2,
-                                      n_redundant=0, n_informative=1,
-                                      n_clusters_per_class=1, flip_y=-1)
-    red = samples[0][samples[1] == 0]
-    blue = samples[0][samples[1] == 1]
-    separable = any([red[:, k].max() < blue[:, k].min() or red[:,
-                                                           k].min() > blue[:,
-                                                                      k].max()
-                     for k in range(2)])
 
-    min_x = np.min(samples[0][:, 0])
-    max_x = np.max(samples[0][:, 0])
+X = linearly_separable_set()
 
-    min_y = np.min(samples[0][:, 1])
-    max_y = np.max(samples[0][:, 1])
+min_x = np.min(X[:, :, 0])
+max_x = np.max(X[:, :, 0])
 
-plt.plot(red[:, 0], red[:, 1], 'r.')
-plt.plot(blue[:, 0], blue[:, 1], 'b.')
-
-X = np.array([red, blue])
+min_y = np.min(X[:, :, 1])
+max_y = np.max(X[:, :, 1])
 
 # Run the perceptron learning algorithm
-w = np.array([1, 1, -0.5])
+w = np.random.random(3)
 for i in range(1000):
     w_old = np.array([i for i in w])
     w = run_iteration(X, w, 0.5)
     if (w == w_old).all():
-        print(f"Terminated after {i} iteration(s)")
+        print(f"Terminated after {i} iteration(s). Weights = {w}.T")
         break
 
-# Display the generated decision boundary
-x = np.linspace(min_x, max_x, 100)
-y = -(x * w[0] + w[2]) / w[1]
+plt.ion()
 
-x = x[np.where(np.logical_and(y >= min_y, y <= max_y))]
-y = y[np.logical_and(y >= min_y, y <= max_y)]
-plt.plot(x, y)
+fig, ax = plt.subplots()
+
+plt.xlim([min_x, max_x])
+plt.ylim([min_y, max_y])
+
+ax.axline(*linePoints(w[0], w[1], w[2]))
+
+ax.plot(X[0][:, 0], X[0][:, 1], 'r.')
+ax.plot(X[1][:, 0], X[1][:, 1], 'b.')
 
 plt.show()
